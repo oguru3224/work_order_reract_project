@@ -1,0 +1,24 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://cognitawriting.com/sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 1
+
+# Disallow admin areas
+Disallow: /admin/
+Disallow: /api/
+Disallow: /private/
+
+# Allow important pages
+Allow: /
+Allow: /services
+Allow: /pricing
+Allow: /samples
+Allow: /writers
+Allow: /about
+Allow: /contact
+Allow: /order
+Allow: /blog

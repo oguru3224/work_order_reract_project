@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Brain, 
   Menu, 
@@ -7,13 +7,24 @@ import {
   Phone, 
   MessageCircle,
   ChevronDown,
-  LogIn
+  LogIn,
+  User,
+  LogOut
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isServicesOpen, setIsServicesOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const auth = useAuth(); // Call useAuth once and store the result
+
+  // Custom logout handler that redirects to landing page
+  const handleLogout = () => {
+    auth.logout();
+    navigate('/', { replace: true });
+  };
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -148,10 +159,34 @@ const Header = () => {
               <button className="border-2 border-blue-600 text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors">
                 Get Quote
               </button>
-              <button className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors">
-                <LogIn className="w-5 h-5" />
-                <span>Sign In</span>
-              </button>
+              
+              {/* Authentication Buttons */}
+              {auth.isAuthenticated ? (
+                <div className="flex items-center space-x-4">
+                  <Link
+                    to="/dashboard"
+                    className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors"
+                  >
+                    <User className="w-5 h-5" />
+                    <span>{auth.user?.name}</span>
+                  </Link>
+                  <button 
+                    onClick={handleLogout}
+                    className="flex items-center space-x-2 text-gray-700 hover:text-red-600 transition-colors"
+                  >
+                    <LogOut className="w-5 h-5" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              ) : (
+                <Link 
+                  to="/dashboard/authorization" 
+                  className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors"
+                >
+                  <LogIn className="w-5 h-5" />
+                  <span>Sign In</span>
+                </Link>
+              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -180,9 +215,25 @@ const Header = () => {
                   <button className="block w-full border-2 border-blue-600 text-blue-600 px-4 py-2 rounded">
                     Get Quote
                   </button>
-                  <button className="block w-full text-gray-700 px-4 py-2 border border-gray-300 rounded">
-                    Sign In
-                  </button>
+                  
+                  {/* Mobile Authentication Buttons */}
+                  {auth.isAuthenticated ? (
+                    <>
+                      <div className="block w-full text-gray-700 px-4 py-2 border border-gray-300 rounded text-center">
+                        Welcome, {auth.user?.name}
+                      </div>
+                      <button 
+                        onClick={handleLogout}
+                        className="block w-full text-red-600 px-4 py-2 border border-red-300 rounded hover:bg-red-50"
+                      >
+                        Logout
+                      </button>
+                    </>
+                  ) : (
+                    <Link to="/login" className="block w-full text-gray-700 px-4 py-2 border border-gray-300 rounded text-center">
+                      Sign In
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>

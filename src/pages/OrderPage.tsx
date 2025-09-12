@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Calculator, FileText, Clock, Shield, CheckCircle, AlertCircle, Upload, X, User, Mail, Phone, CreditCard, Lock } from 'lucide-react';
+import { Calculator, FileText, Clock, Shield, CheckCircle, AlertCircle, Upload, X, User, Phone, CreditCard, Lock } from 'lucide-react';
+import { orderApi, ApiResponse, configApi, ServiceType, AcademicLevelType } from '../services/api';
 
 interface OrderData {
-  academicLevel: string;
-  typeOfWork: string;
-  subject: string;
-  topic: string;
-  pages: number;
-  slides: number;
+  academicLevel: number;
+  paperTypeId: number;
+  topcatId: number;
+  toptitle: string;
+  pagesreq: number;
+  slidesreq: number;
   deadline: string;
   spacing: string;
   sources: number;
   style: string;
   instructions: string;
   discountCode: string;
+  chartsreq: number;
 }
 
 interface RegistrationData {
@@ -51,24 +53,76 @@ const OrderPage: React.FC = () => {
 
     // Scroll to top
     window.scrollTo(0, 0);
+
+    // Fetch service types from backend
+    const fetchServiceTypes = async () => {
+      try {
+        setIsLoadingServiceTypes(true);
+        const response: any = await configApi.getConfig();
+        if (response) {
+          if (response.configsForAcademicWriting) {
+            if (response.configsForAcademicWriting.paperTypes) {
+              setServiceTypes(response.configsForAcademicWriting.paperTypes || []);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching service types:', error);
+      } finally {
+        setIsLoadingServiceTypes(false);
+      }
+    };
+
+      const fetchAcademicLevels = async () => {
+        try {
+          const response: any = await configApi.getConfig();
+          if (response) {
+            if (response.configsForAcademicWriting) {
+              if (response.configsForAcademicWriting.academicLevels) {
+                setAcademicLevels(response.configsForAcademicWriting.academicLevels || []);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching academic levels:', error);
+        }
+      };
+
+      const fetchDisciplineGroups = async () => {
+        try {
+          const response: any = await configApi.getConfig();
+          if (response) {
+            if (response.groupsOfDisciplinesById) {
+              setDisciplineGroups(response.groupsOfDisciplinesById || []);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching discipline groups:', error);
+        }
+      };
+
+      fetchServiceTypes();
+      fetchAcademicLevels();
+      fetchDisciplineGroups();
   }, []);
 
   const [currentStep, setCurrentStep] = useState(1);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   
   const [orderData, setOrderData] = useState<OrderData>({
-    academicLevel: 'High School',
-    typeOfWork: 'Essay',
-    subject: 'English',
-    topic: '',
-    pages: 1,
-    slides: 0,
+    academicLevel: 0,
+    paperTypeId: 0,
+    topcatId: 0,
+    toptitle: '',
+    pagesreq: 1,
+    slidesreq: 0,
     deadline: '14 days',
-    spacing: 'Double',
+    spacing: 'double',
     sources: 0,
     style: 'APA',
     instructions: '',
-    discountCode: ''
+    discountCode: '',
+    chartsreq: 1
   });
 
   const [registrationData, setRegistrationData] = useState<RegistrationData>({
@@ -89,6 +143,12 @@ const OrderPage: React.FC = () => {
   });
 
   const [discountApplied, setDiscountApplied] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
+  const [isLoadingServiceTypes, setIsLoadingServiceTypes] = useState(true);
+  const [academicLevels, setAcademicLevels] = useState<AcademicLevelType[]>([]);
+  const [disciplineGroups, setDisciplineGroups] = useState<any[]>([]);
 
   const handleInputChange = (field: keyof OrderData, value: string | number) => {
     setOrderData(prev => ({
@@ -102,6 +162,56 @@ const OrderPage: React.FC = () => {
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleOrderSubmit = async () => {
+    if (currentStep !== 3) return;
+    
+    setIsSubmitting(true);
+    setSubmitMessage(null);
+    
+    try {
+      // Prepare order data for PHP backend
+      const orderPayload = {
+        paperTypeId: orderData.paperTypeId,
+        academiclevel: orderData.academicLevel,
+        deadline: orderData.deadline,
+        pagesreq: orderData.pagesreq,
+        topcatId: orderData.topcatId,
+        toptitle: orderData.toptitle,
+        instructions: orderData.instructions,
+        customer_name: `${registrationData.firstName} ${registrationData.lastName}`,
+        customer_email: registrationData.email,
+        customer_phone: registrationData.phone,
+        chartsreq: orderData.chartsreq,
+        slidesreq: orderData.slidesreq,
+        spacing: orderData.spacing
+      };
+      
+      const response: ApiResponse<{ order_id: string }> = await orderApi.create(orderPayload);
+      
+      if (response.success && response.data) {
+        setSubmitMessage({
+          type: 'success',
+          text: `Order submitted successfully! Your order ID is: ${response.data.order_id}`
+        });
+        // Reset form or redirect to order confirmation
+        setCurrentStep(4);
+      } else {
+        setSubmitMessage({
+          type: 'error',
+          text: response.message || 'Failed to submit order. Please try again.'
+        });
+      }
+    } catch (error: any) {
+      console.error('Order submission error:', error);
+      setSubmitMessage({
+        type: 'error',
+        text: error.response?.data?.message || 'An error occurred while submitting your order. Please try again.'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handlePaymentChange = (field: keyof PaymentData, value: string) => {
@@ -128,11 +238,11 @@ const OrderPage: React.FC = () => {
 
   const calculatePrice = () => {
     const levelMultipliers = {
-      'High School': 1.0,
-      'College': 1.2,
-      'University': 1.4,
-      'Master\'s': 1.6,
-      'PhD': 2.0
+      1: 1.0,  // High School
+      2: 1.2,  // College
+      3: 1.4,  // University
+      4: 1.6,  // Master's
+      5: 2.0   // PhD
     };
 
     const deadlineMultipliers = {
@@ -152,14 +262,14 @@ const OrderPage: React.FC = () => {
     let pagePrice = basePrice * levelMultipliers[orderData.academicLevel as keyof typeof levelMultipliers] * deadlineMultipliers[orderData.deadline as keyof typeof deadlineMultipliers];
     
     // Apply spacing multiplier only to pages
-    if (orderData.spacing === 'Single') {
+    if (orderData.spacing === 'single') {
       pagePrice *= 2;
     }
     
     const slidePrice = pagePrice * 0.75; // Slides are 75% of page price
     
-    const pagesTotal = orderData.pages * pagePrice;
-    const slidesTotal = orderData.slides * slidePrice;
+    const pagesTotal = orderData.pagesreq * pagePrice;
+    const slidesTotal = orderData.slidesreq * slidePrice;
     const subtotal = pagesTotal + slidesTotal;
     
     const discount = discountApplied ? subtotal * 0.1 : 0;
@@ -180,9 +290,11 @@ const OrderPage: React.FC = () => {
 
   const isStep1Valid = () => {
     return (
-      orderData.topic.trim() !== '' &&
-      orderData.subject.trim() !== '' &&
-      (orderData.pages > 0 || orderData.slides > 0) &&
+      orderData.toptitle.trim() !== '' &&
+      orderData.topcatId > 0 &&
+      orderData.paperTypeId > 0 &&
+      orderData.academicLevel > 0 &&
+      (orderData.pagesreq > 0 || orderData.slidesreq > 0) &&
       orderData.instructions.trim() !== ''
     );
   };
@@ -212,9 +324,11 @@ const OrderPage: React.FC = () => {
 
   const getStep1ValidationMessage = () => {
     const missing = [];
-    if (!orderData.topic.trim()) missing.push('Topic');
-    if (!orderData.subject.trim()) missing.push('Subject');
-    if (orderData.pages === 0 && orderData.slides === 0) missing.push('at least 1 page or slide');
+    if (!orderData.toptitle.trim()) missing.push('toptitle');
+    if (orderData.topcatId == 0) missing.push('Subject');
+    if (orderData.paperTypeId == 0) missing.push('Type of Work');
+    if (orderData.academicLevel == 0) missing.push('Academic Level');
+    if (orderData.pagesreq === 0 && orderData.slidesreq === 0) missing.push('at least 1 page or slide');
     if (!orderData.instructions.trim()) missing.push('Paper Instructions');
     
     if (missing.length > 0) {
@@ -237,12 +351,12 @@ const OrderPage: React.FC = () => {
     }
   };
 
-  const handleSubmitOrder = () => {
-    if (isStep3Valid()) {
-      // Handle order submission
-      alert('Order submitted successfully!');
-    }
-  };
+  // const handleSubmitOrder = () => {
+  //   if (isStep3Valid()) {
+  //     // Handle order submission
+  //     alert('Order submitted successfully!');
+  //   }
+  // };
 
   const steps = [
     { number: 1, title: "Order Details", description: "Provide your paper requirements" },
@@ -314,11 +428,15 @@ const OrderPage: React.FC = () => {
                         onChange={(e) => handleInputChange('academicLevel', e.target.value)}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       >
-                        <option value="High School">High School</option>
-                        <option value="College">College</option>
-                        <option value="University">University</option>
-                        <option value="Master's">Master's</option>
-                        <option value="PhD">PhD</option>
+                        <option value={0}>Select a academic level</option>
+                        {
+                          academicLevels &&
+                          academicLevels.map((level) => (
+                            <option key={level.id} value={level.id}>
+                              {level.title}
+                            </option>
+                          ))
+                        }
                       </select>
                     </div>
 
@@ -328,18 +446,27 @@ const OrderPage: React.FC = () => {
                         Type of Work *
                       </label>
                       <select
-                        value={orderData.typeOfWork}
-                        onChange={(e) => handleInputChange('typeOfWork', e.target.value)}
+                        value={orderData.paperTypeId}
+                        onChange={(e) => handleInputChange('paperTypeId', e.target.value)}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        disabled={isLoadingServiceTypes}
                       >
-                        <option value="Essay">Essay</option>
-                        <option value="Research Paper">Research Paper</option>
-                        <option value="Term Paper">Term Paper</option>
-                        <option value="Dissertation">Dissertation</option>
-                        <option value="Thesis">Thesis</option>
-                        <option value="Case Study">Case Study</option>
-                        <option value="Book Report">Book Report</option>
-                        <option value="Lab Report">Lab Report</option>
+                        {isLoadingServiceTypes ? (
+                          <option value="">Loading service types...</option>
+                        ) : (
+                          <>
+                            <option value="">Select a service type</option>
+                            {serviceTypes.length > 0 ? (
+                              serviceTypes.map((serviceType) => (
+                                <option key={serviceType.id} value={serviceType.id}>
+                                  {serviceType.title}
+                                </option>
+                              ))
+                            ) : (
+                              <option value="" disabled>No service types available</option>
+                            )}
+                          </>
+                        )}
                       </select>
                     </div>
 
@@ -349,20 +476,20 @@ const OrderPage: React.FC = () => {
                         Subject *
                       </label>
                       <select
-                        value={orderData.subject}
-                        onChange={(e) => handleInputChange('subject', e.target.value)}
+                        value={orderData.topcatId}
+                        onChange={(e) => handleInputChange('topcatId', parseInt(e.target.value) || 0)}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       >
-                        <option value="English">English</option>
-                        <option value="History">History</option>
-                        <option value="Psychology">Psychology</option>
-                        <option value="Business">Business</option>
-                        <option value="Nursing">Nursing</option>
-                        <option value="Law">Law</option>
-                        <option value="Economics">Economics</option>
-                        <option value="Sociology">Sociology</option>
-                        <option value="Philosophy">Philosophy</option>
-                        <option value="Literature">Literature</option>
+                        <option value={0}>Select a subject</option>
+                        {disciplineGroups.map((group) => (
+                          <optgroup key={group.id} label={group.name}>
+                            {group.disciplines && group.disciplines.map((discipline: any) => (
+                              <option key={discipline.id} value={discipline.id}>
+                                {discipline.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
                       </select>
                     </div>
 
@@ -373,8 +500,8 @@ const OrderPage: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        value={orderData.topic}
-                        onChange={(e) => handleInputChange('topic', e.target.value)}
+                        value={orderData.toptitle}
+                        onChange={(e) => handleInputChange('toptitle', e.target.value)}
                         placeholder="Enter your paper topic"
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       />
@@ -388,8 +515,8 @@ const OrderPage: React.FC = () => {
                       <input
                         type="number"
                         min="0"
-                        value={orderData.pages}
-                        onChange={(e) => handleInputChange('pages', parseInt(e.target.value) || 0)}
+                        value={orderData.pagesreq}
+                        onChange={(e) => handleInputChange('pagesreq', parseInt(e.target.value) || 0)}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       />
                     </div>
@@ -402,8 +529,8 @@ const OrderPage: React.FC = () => {
                       <input
                         type="number"
                         min="0"
-                        value={orderData.slides}
-                        onChange={(e) => handleInputChange('slides', parseInt(e.target.value) || 0)}
+                        value={orderData.slidesreq}
+                        onChange={(e) => handleInputChange('slidesreq', parseInt(e.target.value) || 0)}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       />
                     </div>
@@ -441,8 +568,8 @@ const OrderPage: React.FC = () => {
                         onChange={(e) => handleInputChange('spacing', e.target.value)}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       >
-                        <option value="Double">Double Spacing</option>
-                        <option value="Single">Single Spacing (2x price for pages)</option>
+                        <option value="double">Double Spacing</option>
+                        <option value="single">Single Spacing (2x price for pages)</option>
                       </select>
                     </div>
                   </div>
@@ -787,16 +914,27 @@ const OrderPage: React.FC = () => {
                       Back to Registration
                     </button>
                     <button
-                      onClick={handleSubmitOrder}
-                      disabled={!isStep3Valid()}
+                      onClick={handleOrderSubmit}
+                      disabled={!isStep3Valid() || isSubmitting}
                       className={`px-8 py-3 rounded-lg font-medium transition-all duration-200 ${
-                        isStep3Valid()
+                        isStep3Valid() && !isSubmitting
                           ? 'bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg'
                           : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       }`}
                     >
-                      Complete Order
+                      {isSubmitting ? 'Submitting...' : 'Complete Order'}
                     </button>
+                    
+                    {/* Submit Message */}
+                    {submitMessage && (
+                      <div className={`mt-4 p-4 rounded-lg ${
+                        submitMessage.type === 'success' 
+                          ? 'bg-green-100 text-green-800 border border-green-200' 
+                          : 'bg-red-100 text-red-800 border border-red-200'
+                      }`}>
+                        {submitMessage.text}
+                      </div>
+                    )}
                   </div>
                 </>
               )}
@@ -822,12 +960,12 @@ const OrderPage: React.FC = () => {
                 </div>
                 <div className="flex justify-between">
                   <span>Pages:</span>
-                  <span className="font-medium">{orderData.pages}</span>
+                  <span className="font-medium">{orderData.pagesreq}</span>
                 </div>
-                {orderData.slides > 0 && (
+                {orderData.slidesreq > 0 && (
                   <div className="flex justify-between">
                     <span>Slides:</span>
-                    <span className="font-medium">{orderData.slides}</span>
+                    <span className="font-medium">{orderData.slidesreq}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
@@ -839,15 +977,15 @@ const OrderPage: React.FC = () => {
               <hr className="my-4" />
 
               <div className="space-y-2 text-sm">
-                {orderData.pages > 0 && (
+                {orderData.pagesreq > 0 && (
                   <div className="flex justify-between">
-                    <span>Pages ({orderData.pages} × ${pricing.pagePrice}):</span>
+                    <span>Pages ({orderData.pagesreq} × ${pricing.pagePrice}):</span>
                     <span>${pricing.pagesTotal}</span>
                   </div>
                 )}
-                {orderData.slides > 0 && (
+                {orderData.slidesreq > 0 && (
                   <div className="flex justify-between">
-                    <span>Slides ({orderData.slides} × ${pricing.slidePrice}):</span>
+                    <span>Slides ({orderData.slidesreq} × ${pricing.slidePrice}):</span>
                     <span>${pricing.slidesTotal}</span>
                   </div>
                 )}
@@ -876,17 +1014,17 @@ const OrderPage: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Discount Code
                   </label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 w-full max-w-full">
                     <input
                       type="text"
                       value={orderData.discountCode}
                       onChange={(e) => handleInputChange('discountCode', e.target.value)}
                       placeholder="Enter code"
-                      className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="flex-1 min-w-0 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                     />
                     <button
                       onClick={applyDiscount}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                      className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex-shrink-0 text-sm whitespace-nowrap"
                     >
                       Apply
                     </button>

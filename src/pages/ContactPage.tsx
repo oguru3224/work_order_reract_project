@@ -10,6 +10,7 @@ import {
   Globe,
   Headphones
 } from 'lucide-react';
+import { contactApi, ApiResponse } from '../services/api';
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({
@@ -20,10 +21,50 @@ const ContactPage = () => {
     urgency: 'normal'
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    console.log('Form submitted:', formData);
+    setIsSubmitting(true);
+    setSubmitMessage(null);
+    
+    try {
+      const response: ApiResponse = await contactApi.submit({
+        name: formData.name,
+        email: formData.email,
+        subject: formData.subject,
+        message: formData.message
+      });
+      
+      if (response.success) {
+        setSubmitMessage({
+          type: 'success',
+          text: 'Thank you! Your message has been sent successfully. We\'ll get back to you soon.'
+        });
+        // Reset form
+        setFormData({
+          name: '',
+          email: '',
+          subject: '',
+          message: '',
+          urgency: 'normal'
+        });
+      } else {
+        setSubmitMessage({
+          type: 'error',
+          text: response.message || 'Failed to send message. Please try again.'
+        });
+      }
+    } catch (error: any) {
+      console.error('Contact form error:', error);
+      setSubmitMessage({
+        type: 'error',
+        text: error.response?.data?.message || 'An error occurred while sending your message. Please try again.'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -236,11 +277,27 @@ const ContactPage = () => {
 
                 <button
                   type="submit"
-                  className="w-full bg-blue-600 text-white py-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center text-lg font-semibold"
+                  disabled={isSubmitting}
+                  className={`w-full py-4 rounded-lg transition-colors flex items-center justify-center text-lg font-semibold ${
+                    isSubmitting
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
                 >
                   <Send className="w-5 h-5 mr-2" />
-                  Send Message
+                  {isSubmitting ? 'Sending...' : 'Send Message'}
                 </button>
+                
+                {/* Submit Message */}
+                {submitMessage && (
+                  <div className={`mt-4 p-4 rounded-lg ${
+                    submitMessage.type === 'success' 
+                      ? 'bg-green-100 text-green-800 border border-green-200' 
+                      : 'bg-red-100 text-red-800 border border-red-200'
+                  }`}>
+                    {submitMessage.text}
+                  </div>
+                )}
               </form>
             </div>
 

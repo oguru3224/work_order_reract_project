@@ -4,6 +4,7 @@ import api from '../config/api';
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
+  newOrderId?: number;
   message?: string;
   errors?: Record<string, string[]>;
 }
@@ -11,11 +12,11 @@ export interface ApiResponse<T = any> {
 export interface OrderData {
   paperTypeId: number;
   academiclevel: number;
-  deadline: string;
+  tariffId: number;
   pagesreq: number;
   topcatId: number;
   toptitle: string;
-  instructions: string;
+  paperDetails: string;
   customer_name: string;
   customer_email: string;
   customer_phone?: string;
@@ -43,7 +44,7 @@ export interface BlogPost {
 
 // Order API
 export const orderApi = {
-  create: async (orderData: OrderData): Promise<ApiResponse<{ order_id: string }>> => {
+  create: async (orderData: OrderData): Promise<ApiResponse<{ newOrderId: number }>> => {
     const response = await api.post('/v1/orders', orderData);
     return response.data;
   },

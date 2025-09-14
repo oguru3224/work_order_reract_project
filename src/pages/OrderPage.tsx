@@ -9,11 +9,11 @@ interface OrderData {
   toptitle: string;
   pagesreq: number;
   slidesreq: number;
-  deadline: string;
+  tariffId: number;
   spacing: string;
   sources: number;
   style: string;
-  instructions: string;
+  paperDetails: string;
   discountCode: string;
   chartsreq: number;
 }
@@ -101,9 +101,21 @@ const OrderPage: React.FC = () => {
         }
       };
 
+      const fetchTraffics = async () => {
+        const response: any = await configApi.getConfig();
+        if (response) {
+          if (response.configsForAcademicWriting) {
+            if (response.configsForAcademicWriting.tariffs) {
+              setTariffs(response.configsForAcademicWriting.tariffs || []);
+            }
+          }
+        }
+      }
+
       fetchServiceTypes();
       fetchAcademicLevels();
       fetchDisciplineGroups();
+      fetchTraffics();
   }, []);
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -116,11 +128,11 @@ const OrderPage: React.FC = () => {
     toptitle: '',
     pagesreq: 1,
     slidesreq: 0,
-    deadline: '14 days',
+    tariffId: 0,
     spacing: 'double',
     sources: 0,
     style: 'APA',
-    instructions: '',
+    paperDetails: '',
     discountCode: '',
     chartsreq: 1
   });
@@ -149,6 +161,17 @@ const OrderPage: React.FC = () => {
   const [isLoadingServiceTypes, setIsLoadingServiceTypes] = useState(true);
   const [academicLevels, setAcademicLevels] = useState<AcademicLevelType[]>([]);
   const [disciplineGroups, setDisciplineGroups] = useState<any[]>([]);
+  const [tariffs, setTariffs] = useState<any[]>([]);
+
+  const tariffs_filter = tariffs.filter(tariff => tariff.academicLevel === orderData.academicLevel);
+  
+
+  // Reset tariff selection when academic level changes
+  useEffect(() => {
+    if (orderData.academicLevel === 0) {
+      setOrderData(prev => ({ ...prev, tariffId: 0 }));
+    }
+  }, [orderData.academicLevel]);
 
   const handleInputChange = (field: keyof OrderData, value: string | number) => {
     setOrderData(prev => ({
@@ -175,11 +198,11 @@ const OrderPage: React.FC = () => {
       const orderPayload = {
         paperTypeId: orderData.paperTypeId,
         academiclevel: orderData.academicLevel,
-        deadline: orderData.deadline,
+        tariffId: orderData.tariffId,
         pagesreq: orderData.pagesreq,
         topcatId: orderData.topcatId,
         toptitle: orderData.toptitle,
-        instructions: orderData.instructions,
+        paperDetails: orderData.paperDetails,
         customer_name: `${registrationData.firstName} ${registrationData.lastName}`,
         customer_email: registrationData.email,
         customer_phone: registrationData.phone,
@@ -188,14 +211,15 @@ const OrderPage: React.FC = () => {
         spacing: orderData.spacing
       };
       
-      const response: ApiResponse<{ order_id: string }> = await orderApi.create(orderPayload);
+      const response: ApiResponse<{ newOrderId: number }> = await orderApi.create(orderPayload);
       
-      if (response.success && response.data) {
+      if (response && response.success) {
         setSubmitMessage({
           type: 'success',
-          text: `Order submitted successfully! Your order ID is: ${response.data.order_id}`
+          text: `Order submitted successfully! Your order ID is: ${response.newOrderId}`
         });
         // Reset form or redirect to order confirmation
+        window.location.href = `/order/${response.newOrderId}`;
         setCurrentStep(4);
       } else {
         setSubmitMessage({
@@ -237,29 +261,10 @@ const OrderPage: React.FC = () => {
   };
 
   const calculatePrice = () => {
-    const levelMultipliers = {
-      1: 1.0,  // High School
-      2: 1.2,  // College
-      3: 1.4,  // University
-      4: 1.6,  // Master's
-      5: 2.0   // PhD
-    };
 
-    const deadlineMultipliers = {
-      '3 hours': 3.0,
-      '6 hours': 2.5,
-      '12 hours': 2.0,
-      '24 hours': 1.8,
-      '2 days': 1.6,
-      '3 days': 1.4,
-      '5 days': 1.2,
-      '7 days': 1.1,
-      '14 days': 1.0,
-      '30 days': 0.9
-    };
-
-    const basePrice = 12;
-    let pagePrice = basePrice * levelMultipliers[orderData.academicLevel as keyof typeof levelMultipliers] * deadlineMultipliers[orderData.deadline as keyof typeof deadlineMultipliers];
+    let pagePrice = 0;
+    const selectedTariff = tariffs_filter.find(tariff => tariff.id === orderData.tariffId);
+    pagePrice = selectedTariff ? selectedTariff.pricePerPage : 0;
     
     // Apply spacing multiplier only to pages
     if (orderData.spacing === 'single') {
@@ -295,7 +300,7 @@ const OrderPage: React.FC = () => {
       orderData.paperTypeId > 0 &&
       orderData.academicLevel > 0 &&
       (orderData.pagesreq > 0 || orderData.slidesreq > 0) &&
-      orderData.instructions.trim() !== ''
+      orderData.paperDetails.trim() !== ''
     );
   };
 
@@ -329,7 +334,7 @@ const OrderPage: React.FC = () => {
     if (orderData.paperTypeId == 0) missing.push('Type of Work');
     if (orderData.academicLevel == 0) missing.push('Academic Level');
     if (orderData.pagesreq === 0 && orderData.slidesreq === 0) missing.push('at least 1 page or slide');
-    if (!orderData.instructions.trim()) missing.push('Paper Instructions');
+    if (!orderData.paperDetails.trim()) missing.push('Paper Instructions');
     
     if (missing.length > 0) {
       return `Please fill in: ${missing.join(', ')}`;
@@ -425,7 +430,7 @@ const OrderPage: React.FC = () => {
                       </label>
                       <select
                         value={orderData.academicLevel}
-                        onChange={(e) => handleInputChange('academicLevel', e.target.value)}
+                        onChange={(e) => handleInputChange('academicLevel', parseInt(e.target.value) || 0)}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       >
                         <option value={0}>Select a academic level</option>
@@ -540,22 +545,19 @@ const OrderPage: React.FC = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Deadline *
                       </label>
-                      <select
-                        value={orderData.deadline}
-                        onChange={(e) => handleInputChange('deadline', e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      >
-                        <option value="3 hours">3 hours</option>
-                        <option value="6 hours">6 hours</option>
-                        <option value="12 hours">12 hours</option>
-                        <option value="24 hours">24 hours</option>
-                        <option value="2 days">2 days</option>
-                        <option value="3 days">3 days</option>
-                        <option value="5 days">5 days</option>
-                        <option value="7 days">7 days</option>
-                        <option value="14 days">14 days</option>
-                        <option value="30 days">30 days</option>
-                      </select>
+                        <select
+                          value={orderData.tariffId}
+                          onChange={(e) => handleInputChange('tariffId', parseInt(e.target.value) || 0)}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                          disabled={orderData.academicLevel === 0}
+                        >
+                          <option value={0}>Select deadline</option>
+                          {tariffs_filter.map((tariff) => (
+                            <option key={tariff.id} value={tariff.id}>
+                              {tariff.name}
+                            </option>
+                          ))}
+                        </select>
                     </div>
 
                     {/* Spacing */}
@@ -580,8 +582,8 @@ const OrderPage: React.FC = () => {
                       Paper Instructions *
                     </label>
                     <textarea
-                      value={orderData.instructions}
-                      onChange={(e) => handleInputChange('instructions', e.target.value)}
+                      value={orderData.paperDetails}
+                      onChange={(e) => handleInputChange('paperDetails', e.target.value)}
                       placeholder="Provide detailed instructions for your paper..."
                       rows={6}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -952,11 +954,15 @@ const OrderPage: React.FC = () => {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span>Academic Level:</span>
-                  <span className="font-medium">{orderData.academicLevel}</span>
+                  <span className="font-medium">
+                    {academicLevels.find(level => level.id === orderData.academicLevel)?.title || 'Not selected'}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Deadline:</span>
-                  <span className="font-medium">{orderData.deadline}</span>
+                  <span className="font-medium">
+                    {tariffs_filter.find(t => t.id === orderData.tariffId)?.name || 'Not selected'}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Pages:</span>

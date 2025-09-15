@@ -1,37 +1,58 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // React is used for JSX
 import { Link } from 'react-router-dom';
 import { 
   CheckCircle, 
   Calculator,
-  Clock,
-  GraduationCap,
-  FileText,
   ArrowRight,
-  Star
 } from 'lucide-react';
+import { configApi, AcademicLevelType } from '../services/api';
 
 const PricingPage = () => {
-  const [academicLevel, setAcademicLevel] = useState('undergraduate');
-  const [deadline, setDeadline] = useState('14');
+  const [academicLevel, setAcademicLevel] = useState(1);
+  const [deadline, setDeadline] = useState(0);
   const [pages, setPages] = useState(1);
+  const [academicLevels, setAcademicLevels] = useState<AcademicLevelType[]>([]);
+  const [tariffs, setTariffs] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const pricingData = {
-    'high-school': {
-      '14': 11.30, '7': 12.99, '3': 16.99, '24': 23.99, '12': 29.99, '6': 34.99
-    },
-    'undergraduate': {
-      '14': 13.99, '7': 15.99, '3': 19.99, '24': 26.99, '12': 32.99, '6': 38.99
-    },
-    'masters': {
-      '14': 22.99, '7': 24.99, '3': 28.99, '24': 35.99, '12': 41.99, '6': 47.99
-    },
-    'phd': {
-      '14': 26.99, '7': 28.99, '3': 32.99, '24': 39.99, '12': 45.99, '6': 51.99
-    }
-  };
+  // Fetch academic levels and tariffs from backend
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response: any = await configApi.getConfig();
+        if (response) {
+          if (response.configsForAcademicWriting) {
+            if (response.configsForAcademicWriting.academicLevels) {
+              setAcademicLevels(response.configsForAcademicWriting.academicLevels || []);
+            }
+            if (response.configsForAcademicWriting.tariffs) {
+              setTariffs(response.configsForAcademicWriting.tariffs || []);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching pricing data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Reset deadline when academic level changes
+  useEffect(() => {
+    setDeadline(0);
+  }, [academicLevel]);
+
+  // Filter tariffs based on selected academic level
+  const filteredTariffs = tariffs.filter(tariff => tariff.academicLevel === academicLevel);
 
   const getCurrentPrice = () => {
-    return pricingData[academicLevel as keyof typeof pricingData][deadline as keyof typeof pricingData['high-school']] || 0;
+    if (academicLevel === 0 || deadline === 0) return 0;
+    const selectedTariff = filteredTariffs.find(tariff => tariff.id === deadline);
+    return selectedTariff ? selectedTariff.pricePerPage : 0;
   };
 
   const getTotalPrice = () => {
@@ -85,43 +106,47 @@ const PricingPage = () => {
                 {/* Academic Level */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-3">Academic Level</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      { value: 'high-school', label: 'High School' },
-                      { value: 'undergraduate', label: 'Undergraduate' },
-                      { value: 'masters', label: "Master's" },
-                      { value: 'phd', label: 'PhD' }
-                    ].map((level) => (
-                      <button
-                        key={level.value}
-                        onClick={() => setAcademicLevel(level.value)}
-                        className={`p-3 rounded-lg border-2 transition-all ${
-                          academicLevel === level.value
-                            ? 'border-blue-600 bg-blue-50 text-blue-600'
-                            : 'border-gray-200 hover:border-blue-300'
-                        }`}
-                      >
-                        {level.label}
-                      </button>
-                    ))}
-                  </div>
+                  {isLoading ? (
+                    <div className="text-center py-4 text-gray-500">Loading academic levels...</div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      {academicLevels.map((level) => (
+                        <button
+                          key={level.id}
+                          onClick={() => setAcademicLevel(level.id)}
+                          className={`p-3 rounded-lg border-2 transition-all ${
+                            academicLevel === level.id
+                              ? 'border-blue-600 bg-blue-50 text-blue-600'
+                              : 'border-gray-200 hover:border-blue-300'
+                          }`}
+                        >
+                          {level.title}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Deadline */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-3">Deadline</label>
-                  <select
-                    value={deadline}
-                    onChange={(e) => setDeadline(e.target.value)}
-                    className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-600 focus:outline-none"
-                  >
-                    <option value="14">14 days</option>
-                    <option value="7">7 days</option>
-                    <option value="3">3 days</option>
-                    <option value="24">24 hours</option>
-                    <option value="12">12 hours</option>
-                    <option value="6">6 hours</option>
-                  </select>
+                  {isLoading ? (
+                    <div className="text-center py-4 text-gray-500">Loading deadlines...</div>
+                  ) : (
+                    <select
+                      value={deadline}
+                      onChange={(e) => setDeadline(parseInt(e.target.value) || 0)}
+                      className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-600 focus:outline-none"
+                      disabled={academicLevel === 0}
+                    >
+                      <option value={0}>Select deadline</option>
+                      {filteredTariffs.map((tariff) => (
+                        <option key={tariff.id} value={tariff.id}>
+                          {tariff.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 {/* Pages */}
@@ -164,7 +189,7 @@ const PricingPage = () => {
                 </div>
 
                 <Link
-                  to="/order"
+                  to={`/order?academicLevel=${academicLevel}&deadline=${deadline}&pages=${pages}`}
                   className="w-full bg-orange-500 text-white py-4 rounded-lg text-lg font-semibold hover:bg-orange-600 transition-colors flex items-center justify-center"
                 >
                   Order Now
@@ -212,39 +237,37 @@ const PricingPage = () => {
             <p className="text-xl text-gray-600">Choose the academic level and deadline that fits your needs</p>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full bg-white rounded-xl shadow-lg overflow-hidden">
-              <thead className="bg-blue-600 text-white">
-                <tr>
-                  <th className="px-6 py-4 text-left">Academic Level</th>
-                  <th className="px-6 py-4 text-center">14 days</th>
-                  <th className="px-6 py-4 text-center">7 days</th>
-                  <th className="px-6 py-4 text-center">3 days</th>
-                  <th className="px-6 py-4 text-center">24 hours</th>
-                  <th className="px-6 py-4 text-center">12 hours</th>
-                  <th className="px-6 py-4 text-center">6 hours</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  { level: 'High School', key: 'high-school' },
-                  { level: 'Undergraduate', key: 'undergraduate' },
-                  { level: "Master's", key: 'masters' },
-                  { level: 'PhD', key: 'phd' }
-                ].map((row, index) => (
-                  <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                    <td className="px-6 py-4 font-semibold text-gray-900">{row.level}</td>
-                    <td className="px-6 py-4 text-center">${pricingData[row.key as keyof typeof pricingData]['14']}</td>
-                    <td className="px-6 py-4 text-center">${pricingData[row.key as keyof typeof pricingData]['7']}</td>
-                    <td className="px-6 py-4 text-center">${pricingData[row.key as keyof typeof pricingData]['3']}</td>
-                    <td className="px-6 py-4 text-center">${pricingData[row.key as keyof typeof pricingData]['24']}</td>
-                    <td className="px-6 py-4 text-center">${pricingData[row.key as keyof typeof pricingData]['12']}</td>
-                    <td className="px-6 py-4 text-center">${pricingData[row.key as keyof typeof pricingData]['6']}</td>
+          {isLoading ? (
+            <div className="text-center py-12">
+              <div className="text-gray-500">Loading pricing data...</div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full bg-white rounded-xl shadow-lg overflow-hidden">
+                <thead className="bg-blue-600 text-white">
+                  <tr>
+                    <th className="px-6 py-4 text-left">Academic Level</th>
+                    {academicLevels.length > 0 && tariffs.filter(t => t.academicLevel === academicLevels[0].id).map((tariff) => (
+                      <th key={tariff.id} className="px-6 py-4 text-center">{tariff.name}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {academicLevels.map((level, index) => {
+                    const levelTariffs = tariffs.filter(t => t.academicLevel === level.id);
+                    return (
+                      <tr key={level.id} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                        <td className="px-6 py-4 font-semibold text-gray-900">{level.title}</td>
+                        {levelTariffs.map((tariff) => (
+                          <td key={tariff.id} className="px-6 py-4 text-center">${tariff.pricePerPage}</td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </section>
 
@@ -292,7 +315,7 @@ const PricingPage = () => {
             Get started now and receive your high-quality academic paper on time
           </p>
           <Link 
-            to="/order" 
+            to={`/order?academicLevel=${academicLevel}&deadline=${deadline}&pages=${pages}`}
             className="bg-orange-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-orange-600 transition-colors inline-flex items-center"
           >
             Place Order Now

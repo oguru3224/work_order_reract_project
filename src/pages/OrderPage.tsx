@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Calculator, FileText, Clock, Shield, CheckCircle, AlertCircle, Upload, X, User, Phone, CreditCard, Lock } from 'lucide-react';
 import { orderApi, ApiResponse, configApi, ServiceType, AcademicLevelType } from '../services/api';
 
@@ -36,6 +37,8 @@ interface PaymentData {
 }
 
 const OrderPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  
   useEffect(() => {
     document.title = 'Order Essay Writing Service | Easy Steps, 24/7 Support | Cognita';
     
@@ -164,6 +167,38 @@ const OrderPage: React.FC = () => {
   const [tariffs, setTariffs] = useState<any[]>([]);
 
   const tariffs_filter = tariffs.filter(tariff => tariff.academicLevel === orderData.academicLevel);
+
+  // Set form values from URL parameters after data is loaded
+  useEffect(() => {
+    const urlAcademicLevel = searchParams.get('academicLevel');
+    const urlPages = searchParams.get('pages');
+
+    if (urlAcademicLevel && academicLevels.length > 0) {
+      const academicLevelId = parseInt(urlAcademicLevel);
+      if (academicLevels.find(level => level.id === academicLevelId)) {
+        setOrderData(prev => ({ ...prev, academicLevel: academicLevelId }));
+      }
+    }
+
+    if (urlPages) {
+      const pagesValue = parseInt(urlPages);
+      if (pagesValue > 0) {
+        setOrderData(prev => ({ ...prev, pagesreq: pagesValue }));
+      }
+    }
+  }, [searchParams, academicLevels, tariffs]);
+
+  // Set deadline after academic level is set and tariffs are loaded
+  useEffect(() => {
+    const urlDeadline = searchParams.get('deadline');
+    if (urlDeadline && orderData.academicLevel > 0 && tariffs.length > 0) {
+      const deadlineId = parseInt(urlDeadline);
+      const filteredTariffs = tariffs.filter(tariff => tariff.academicLevel === orderData.academicLevel);
+      if (filteredTariffs.find(tariff => tariff.id === deadlineId)) {
+        setOrderData(prev => ({ ...prev, tariffId: deadlineId }));
+      }
+    }
+  }, [searchParams, orderData.academicLevel, tariffs]);
   
 
   // Reset tariff selection when academic level changes

@@ -33,7 +33,7 @@ const ContactPage = () => {
       const response: ApiResponse = await contactApi.submit({
         name: formData.name,
         email: formData.email,
-        subject: formData.subject,
+        topcatId: formData.subject,
         message: formData.message
       });
       
@@ -78,7 +78,7 @@ const ContactPage = () => {
     {
       title: "Phone Support",
       description: "Speak directly with our support team",
-      contact: "+1 (877) 398-5184",
+      contact: "+1 (251) 265-5102",
       availability: "24/7 Available",
       icon: <Phone className="w-8 h-8 text-blue-600" />,
       action: "Call Now"
@@ -106,7 +106,7 @@ const ContactPage = () => {
       city: "New York",
       address: "123 Academic Ave, Suite 456",
       zipCode: "New York, NY 10001",
-      phone: "+1 (877) 398-5184"
+      phone: "+1 (251) 265-5102"
     },
     {
       city: "Los Angeles",
@@ -312,7 +312,7 @@ const ContactPage = () => {
                     </div>
                     <div>
                       <h4 className="text-lg font-semibold text-gray-900">Phone Support</h4>
-                      <p className="text-gray-600">+1 (877) 398-5184</p>
+                      <p className="text-gray-600">+1 (251) 265-5102</p>
                       <p className="text-sm text-green-600">Available 24/7</p>
                     </div>
                   </div>

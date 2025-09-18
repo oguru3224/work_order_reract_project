@@ -37,7 +37,7 @@ const Header = () => {
             <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-2">
                 <Phone className="w-4 h-4" />
-                <span>+1 (877) 398-5184</span>
+                <span>+1 (251) 265-5102</span>
               </div>
               <div className="flex items-center space-x-2">
                 <MessageCircle className="w-4 h-4" />
@@ -156,7 +156,9 @@ const Header = () => {
               >
                 Order Now
               </Link>
-              <button className="border-2 border-blue-600 text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors">
+              <button
+                onClick={() => window.location.href = 'https://cognitawriting.com/dashboard/inquiry'} 
+                className="border-2 border-blue-600 text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors">
                 Get Quote
               </button>
               
@@ -179,13 +181,13 @@ const Header = () => {
                   </button>
                 </div>
               ) : (
-                <Link 
-                  to="/dashboard/authorization" 
+                <button 
+                  onClick={() => window.location.href = 'https://cognitawriting.com/dashboard/authorization'}
                   className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors"
                 >
                   <LogIn className="w-5 h-5" />
                   <span>Sign In</span>
-                </Link>
+                </button>
               )}
             </div>
 
@@ -230,9 +232,12 @@ const Header = () => {
                       </button>
                     </>
                   ) : (
-                    <Link to="/login" className="block w-full text-gray-700 px-4 py-2 border border-gray-300 rounded text-center">
+                    <button 
+                      onClick={() => window.location.href = 'https://cognitawriting.com/dashboard/authorization'}
+                      className="block w-full text-gray-700 px-4 py-2 border border-gray-300 rounded text-center hover:bg-gray-50"
+                    >
                       Sign In
-                    </Link>
+                    </button>
                   )}
                 </div>
               </div>

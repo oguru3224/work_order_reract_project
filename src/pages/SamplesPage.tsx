@@ -495,9 +495,11 @@ const SamplesPage = () => {
                       <Eye className="w-4 h-4 mr-2" />
                       Preview
                     </button>
-                    <button className="flex-1 border-2 border-blue-600 text-blue-600 py-2 px-4 rounded-lg hover:bg-blue-50 transition-colors flex items-center justify-center">
+                    <button 
+                      onClick={() => window.location.href = 'https://cognitawriting.com/order'} 
+                      className="flex-1 border-2 border-blue-600 text-blue-600 py-2 px-4 rounded-lg hover:bg-blue-50 transition-colors flex items-center justify-center">
                       <Download className="w-4 h-4 mr-2" />
-                      <Link to="/order">Order Similar</Link>
+                      Order Similar
                     </button>
                   </div>
                 </div>

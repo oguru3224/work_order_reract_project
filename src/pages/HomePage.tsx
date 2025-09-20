@@ -199,12 +199,12 @@ const HomePage = () => {
                     <span className="text-gray-700">Free revisions</span>
                   </div>
                 </div>
-                <Link 
-                  to="/order" 
+                <button 
+                  onClick={() => window.location.href = 'https://cognitawriting.com/order'} 
                   className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors text-center block font-semibold"
                 >
                   Order Now
-                </Link>
+                </button>
               </div>
             ))}
           </div>
@@ -347,6 +347,7 @@ const HomePage = () => {
                 
                 <div className="flex space-x-2">
                   <button 
+                    onClick={() => window.location.href = 'https://cognitawriting.com/order'} 
                     className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors ${
                       writer.available
                         ? 'bg-blue-600 text-white hover:bg-blue-700'

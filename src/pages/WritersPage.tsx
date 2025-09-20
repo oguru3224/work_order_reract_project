@@ -501,8 +501,8 @@ const WritersPage = () => {
 
                   {/* Actions */}
                   <div className="flex space-x-3">
-                    <Link
-                      to="/order"
+                    <button
+                      onClick={() => window.location.href = 'https://cognitawriting.com/order'} 
                       className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors ${
                         writer.available
                           ? 'bg-blue-600 text-white hover:bg-blue-700'
@@ -510,7 +510,7 @@ const WritersPage = () => {
                       } text-center block`}
                     >
                       Hire This Writer
-                    </Link>
+                    </button>
                     <button className="flex items-center justify-center w-12 h-10 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
                       <Eye className="w-4 h-4" />
                     </button>

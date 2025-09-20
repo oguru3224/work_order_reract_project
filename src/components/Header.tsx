@@ -150,12 +150,12 @@ const Header = () => {
 
             {/* CTA Buttons */}
             <div className="hidden lg:flex items-center space-x-4">
-              <Link 
-                to="/order" 
+              <button 
+                onClick={() => window.location.href = 'https://cognitawriting.com/order'} 
                 className="bg-orange-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-600 transition-colors"
               >
                 Order Now
-              </Link>
+              </button>
               <button
                 onClick={() => window.location.href = 'https://cognitawriting.com/dashboard/inquiry'} 
                 className="border-2 border-blue-600 text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors">

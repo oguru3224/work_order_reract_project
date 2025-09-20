@@ -188,13 +188,13 @@ const PricingPage = () => {
                   </div>
                 </div>
 
-                <Link
-                  to={`/order?academicLevel=${academicLevel}&deadline=${deadline}&pages=${pages}`}
+                <button
+                  onClick={() => window.location.href = `https://cognitawriting.com/order?academicLevel=${academicLevel}&deadline=${deadline}&pages=${pages}`}
                   className="w-full bg-orange-500 text-white py-4 rounded-lg text-lg font-semibold hover:bg-orange-600 transition-colors flex items-center justify-center"
                 >
                   Order Now
                   <ArrowRight className="w-5 h-5 ml-2" />
-                </Link>
+                </button>
               </div>
             </div>
 
